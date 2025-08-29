@@ -1,0 +1,58 @@
+# FASTEST HIPAA-Compliant Render Deployment
+# Single combined service for immediate deployment
+
+services:
+  # Combined API + Ollama Service (PUBLIC with HIPAA controls)
+  - type: web  # Web service for API access
+    name: hipaa-oss-llm
+    runtime: docker
+    dockerfilePath: ./Dockerfile.combined
+    region: oregon
+    plan: standard  # $25/month - needed for LLM memory
+    
+    # Health check
+    healthCheckPath: /health
+    
+    # Encrypted disk for model storage
+    disk:
+      name: ollama-models
+      mountPath: /root/.ollama
+      sizeGB: 10  # Enough for llama3.2
+      
+    # Environment variables
+    envVars:
+      - key: OLLAMA_MODEL
+        value: llama3.2
+      - key: OLLAMA_HOST
+        value: 0.0.0.0:11434
+      - key: OLLAMA_URL
+        value: http://localhost:11434/api/chat
+      - key: PORT
+        value: 8000
+      
+      # HIPAA Compliance Settings
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: MASK_PHI_IN_LOGS
+        value: true
+      - key: AUDIT_LOG_ENABLED
+        value: true
+      - key: API_KEY_REQUIRED
+        value: true
+      - key: API_KEY
+        generateValue: true  # Auto-generate API key
+      - key: RATE_LIMIT_ENABLED
+        value: true
+      - key: MAX_REQUESTS_PER_MINUTE
+        value: 60
+      
+    # Auto-scaling (optional)
+    scaling:
+      minInstances: 1
+      maxInstances: 1  # Keep at 1 for LLM consistency
+
+# For true HIPAA compliance, you should also have:
+# 1. Render BAA signed (Business Associate Agreement)
+# 2. API key authentication enabled
+# 3. TLS/SSL (automatic on Render)
+# 4. Audit logging enabled
