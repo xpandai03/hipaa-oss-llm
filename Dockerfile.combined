@@ -1,5 +1,5 @@
 # Combined Dockerfile for FastAPI + Ollama
-# For fastest Render deployment
+# Optimized for Render deployment
 
 FROM ollama/ollama:latest
 
@@ -23,31 +23,46 @@ COPY tools/ ./tools/
 # Install Python dependencies
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Create startup script
+# Create startup script with better error handling and timing
 RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
 # Start Ollama in background\n\
+echo "Starting Ollama server..."\n\
 ollama serve &\n\
 OLLAMA_PID=$!\n\
 \n\
-# Wait for Ollama to be ready\n\
-echo "Waiting for Ollama to start..."\n\
-sleep 10\n\
+# Wait for Ollama to be ready (with retry logic)\n\
+echo "Waiting for Ollama to be ready..."\n\
+for i in {1..30}; do\n\
+    if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then\n\
+        echo "Ollama is ready!"\n\
+        break\n\
+    fi\n\
+    echo "Waiting for Ollama... ($i/30)"\n\
+    sleep 2\n\
+done\n\
 \n\
-# Pull the model if not exists\n\
-echo "Pulling llama3.2 model..."\n\
-ollama pull llama3.2 || true\n\
+# Pull the model (with better error handling)\n\
+echo "Checking/pulling llama3.2 model..."\n\
+if ! ollama list | grep -q "llama3.2"; then\n\
+    echo "Model not found, pulling llama3.2..."\n\
+    ollama pull llama3.2 || echo "Warning: Model pull failed, will retry on first request"\n\
+else\n\
+    echo "Model llama3.2 already available"\n\
+fi\n\
 \n\
 # Start FastAPI app on the PORT provided by Render\n\
 echo "Starting FastAPI application on port ${PORT:-8000}..."\n\
-uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}\n\
+exec uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
 # Expose both Ollama and FastAPI ports
 EXPOSE 11434 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s \
-  CMD curl -f http://localhost:8000/health || exit 1
+# Health check with longer start period for model download
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
+  CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # Run the startup script
 CMD ["/app/start.sh"]

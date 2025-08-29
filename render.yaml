@@ -10,8 +10,9 @@ services:
     region: oregon
     plan: standard  # $25/month - needed for LLM memory
     
-    # Health check
+    # Health check with longer timeout for model loading
     healthCheckPath: /health
+    healthCheckDelay: 120  # Give time for model download
     
     # Encrypted disk for model storage
     disk:
