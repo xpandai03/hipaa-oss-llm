@@ -28,7 +28,7 @@ services:
       - key: OLLAMA_URL
         value: http://localhost:11434/api/chat
       - key: PORT
-        value: 8000
+        value: "8000"
       
       # HIPAA Compliance Settings
       - key: SESSION_SECRET
@@ -44,12 +44,7 @@ services:
       - key: RATE_LIMIT_ENABLED
         value: true
       - key: MAX_REQUESTS_PER_MINUTE
-        value: 60
-      
-    # Auto-scaling (optional)
-    scaling:
-      minInstances: 1
-      maxInstances: 1  # Keep at 1 for LLM consistency
+        value: "60"
 
 # For true HIPAA compliance, you should also have:
 # 1. Render BAA signed (Business Associate Agreement)
