@@ -19,7 +19,6 @@ COPY requirements.txt .
 COPY app.py .
 COPY providers/ ./providers/
 COPY tools/ ./tools/
-COPY .env* ./
 
 # Install Python dependencies
 RUN pip3 install --no-cache-dir -r requirements.txt
@@ -35,11 +34,12 @@ echo "Waiting for Ollama to start..."\n\
 sleep 10\n\
 \n\
 # Pull the model if not exists\n\
+echo "Pulling llama3.2 model..."\n\
 ollama pull llama3.2 || true\n\
 \n\
-# Start FastAPI app\n\
-echo "Starting FastAPI application..."\n\
-python3 app.py\n\
+# Start FastAPI app on the PORT provided by Render\n\
+echo "Starting FastAPI application on port ${PORT:-8000}..."\n\
+uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
 # Expose both Ollama and FastAPI ports
